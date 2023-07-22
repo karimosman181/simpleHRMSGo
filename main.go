@@ -7,6 +7,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -130,9 +131,50 @@ func createNewEmployee(c *fiber.Ctx) error {
 
 /**
  *
- *
+ * update employee
  **/
-func updateEmployee(c *fiber.Ctx) error {}
+func updateEmployee(c *fiber.Ctx) error {
+	//get id from params
+	id := c.Params("id")
+
+	employeeID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	employee := new(Employee)
+
+	if err := c.BodyParser(employee); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	query := bson.D{{Key: "_id", Value: employeeID}}
+
+	update := bson.D{
+		{
+			Key: "$set",
+			Value: bson.D{
+				{Key: "name", Value: employee.Name},
+				{Key: "salary", Value: employee.Salary},
+				{Key: "age", Value: employee.Age},
+			},
+		},
+	}
+
+	err = mg.Db.Collection("employees").FindOneAndUpdate(c.Context(), query, update).Err()
+
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return c.SendStatus(400)
+		}
+
+		return c.SendStatus(500)
+	}
+
+	employee.ID = id
+
+	return c.Status(200).JSON(employee)
+}
 
 /**
  *
