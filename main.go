@@ -85,7 +85,12 @@ func getEmployeeByID(c *fiber.Ctx) error {
 	//get id from params
 	id := c.Params("id")
 
-	query := bson.D{{Key: "_id", Value: id}}
+	employeeID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	query := bson.D{{Key: "_id", Value: employeeID}}
 	cursor := mg.Db.Collection("employees").FindOne(c.Context(), query)
 
 	createdEmployee := &Employee{}
@@ -178,9 +183,28 @@ func updateEmployee(c *fiber.Ctx) error {
 
 /**
  *
- *
+ * delete employee record
  **/
-func deleteEmploye(c *fiber.Ctx) error {}
+func deleteEmploye(c *fiber.Ctx) error {
+
+	employeeID, err := primitive.ObjectIDFromHex(c.Params("id"))
+	if err != nil {
+		return c.SendStatus(400)
+	}
+
+	query := bson.D{{Key: "_id", Value: employeeID}}
+	result, err := mg.Db.Collection("employees").DeleteOne(c.Context(), &query)
+	if err != nil {
+		return c.SendStatus(500)
+	}
+
+	if result.DeletedCount < 1 {
+		return c.SendStatus(404)
+	}
+
+	return c.Status(200).JSON("record Deleted !!!")
+
+}
 
 /**
  *
@@ -199,4 +223,7 @@ func main() {
 	app.Post("/employee", createNewEmployee)
 	app.Put("/employee/:id", updateEmployee)
 	app.Delete("/employee/:id", deleteEmploye)
+
+	//start server
+	log.Fatal(app.Listen(":3000"))
 }
