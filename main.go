@@ -8,7 +8,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -81,13 +80,53 @@ func getEmployees(c *fiber.Ctx) error {
  *
  *
  **/
-func getEmployeeByID(c *fiber.Ctx) error {}
+func getEmployeeByID(c *fiber.Ctx) error {
+	//get id from params
+	id := c.Params("id")
+
+	query := bson.D{{Key: "_id", Value: id}}
+	cursor := mg.Db.Collection("employees").FindOne(c.Context(), query)
+
+	createdEmployee := &Employee{}
+
+	cursor.Decode(createdEmployee)
+
+	return c.Status(201).JSON(createdEmployee)
+}
 
 /**
  *
- *
+ * create a new employee record
  **/
-func createNewEmployee(c *fiber.Ctx) error {}
+func createNewEmployee(c *fiber.Ctx) error {
+	collection := mg.Db.Collection("employees")
+
+	employee := new(Employee)
+
+	if err := c.BodyParser(employee); err != nil {
+		return c.Status(400).SendString(err.Error())
+	}
+
+	//to force mongo db to create id
+	employee.ID = ""
+
+	insertionResult, err := collection.InsertOne(c.Context(), employee)
+	if err != nil {
+		return c.Status(500).SendString(err.Error())
+	}
+
+	//to make sure the record is inserted , retrive the record and send it give as a response
+	ID := insertionResult.InsertedID
+
+	query := bson.D{{Key: "_id", Value: ID}}
+	cursor := collection.FindOne(c.Context(), query)
+
+	createdEmployee := &Employee{}
+
+	cursor.Decode(createdEmployee)
+
+	return c.Status(201).JSON(createdEmployee)
+}
 
 /**
  *
